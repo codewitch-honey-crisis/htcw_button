@@ -1,0 +1,18 @@
+{
+    "name": "htcw_button",
+    "version": "0.1.0",
+    "description": "Provides support for a simple pin based button",
+    "keywords": ["button"],
+    "authors": {
+        "name":"honey the codewitch",
+        "homepage": "https://www.codeproject.com/Members/code-witch"
+    },
+    "license": "MIT",
+    "frameworks": ["arduino"],
+    "platforms": "*",
+    "repository":
+    {
+        "type": "git",
+        "url": "https://github.com/codewitch-honey-crisis/htcw_button.git"
+    }
+}
