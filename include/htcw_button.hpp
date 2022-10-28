@@ -2,13 +2,13 @@
 #include <Arduino.h>
 namespace arduino {
 typedef void(*button_callback)(bool pressed, void* state);
-template<uint8_t Pin,uint32_t DebounceMS = 10,bool ClosedHigh = false>
+template<uint8_t Pin,uint32_t DebounceMS = 10,bool OpenHigh = false>
 class button {
 public:
     using type = button;
     constexpr static const uint8_t pin = Pin;
     constexpr static const uint32_t debounce_ms = DebounceMS;
-    constexpr static const bool closed_high = ClosedHigh;
+    constexpr static const bool open_high = OpenHigh;
 private:
     int m_pressed;
     button_callback m_callback;
@@ -38,7 +38,7 @@ public:
     bool initialize() {
         if(m_pressed==-1) {
             m_last_change_ms = 0;
-            if(closed_high) {
+            if(open_high) {
                 pinMode(pin,INPUT_PULLUP);
             } else {
                 pinMode(pin,INPUT_PULLDOWN);
@@ -52,7 +52,7 @@ public:
         m_callback = callback;
         m_state = state;
     }
-    inline bool raw_pressed() { initialize(); return closed_high?!digitalRead(pin):digitalRead(pin);}
+    inline bool raw_pressed() { initialize(); return open_high?!digitalRead(pin):digitalRead(pin);}
     inline bool pressed() { initialize(); return m_pressed; }
     void update() {
         bool pressed = raw_pressed();
