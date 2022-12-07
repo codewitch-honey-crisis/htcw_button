@@ -1,13 +1,19 @@
 #pragma once
 #include <Arduino.h>
 namespace arduino {
+// standard button callback - when pressed or depressed
 typedef void (*button_callback)(bool pressed, void* state);
+// represents a simple button
 template <uint8_t Pin, uint32_t DebounceMS = 10, bool OpenHigh = false>
-class button {
+class button final {
    public:
+    // the button type
     using type = button;
+    // the pin of the button
     constexpr static const uint8_t pin = Pin;
+    // milliseconds of debounce
     constexpr static const uint32_t debounce_ms = DebounceMS;
+    // true if switch is inverted such that it's high when not pressed
     constexpr static const bool open_high = OpenHigh;
 
    private:
@@ -36,6 +42,7 @@ class button {
     }
     button() : m_pressed(-1), m_callback(nullptr), m_state(nullptr) {
     }
+    // initializes the button
     bool initialize() {
         if (m_pressed == -1) {
             m_last_change_ms = 0;
@@ -49,18 +56,22 @@ class button {
         }
         return m_pressed != -1;
     }
+    // sets the callback
     inline void callback(button_callback callback, void* state = nullptr) {
         m_callback = callback;
         m_state = state;
     }
+    // indicates whether the button is pressed (no debounce)
     inline bool raw_pressed() {
         initialize();
         return open_high ? !digitalRead(pin) : digitalRead(pin);
     }
+    // indicates whether the button is pressed
     inline bool pressed() {
         initialize();
         return m_pressed == 1;
     }
+    // updates the button. should be done in loops
     void update() {
         bool pressed = raw_pressed();
         if (pressed != m_pressed) {
@@ -75,8 +86,11 @@ class button {
         }
     }
 };
+
+// the callbacks for the extended button
 typedef void (*button_ex_callback)(void* state);
 
+// represents an extended button
 template <uint8_t Pin, uint32_t DebounceMS = 10, bool OpenHigh = false, uint32_t DoubleClickMS = 250, uint32_t LongClickMS = 500>
 struct button_ex final {
     using type = button_ex;
@@ -140,6 +154,7 @@ struct button_ex final {
     }
     button_ex() : m_pressed(-1), m_clicks(0), m_long_clicks(0), m_last_change_ms(0), m_last_release_ms(0), m_last_press_ms(0), m_click_cb(nullptr), m_click_state(nullptr), m_double_click_cb(nullptr), m_double_click_state(nullptr), m_long_click_cb(nullptr), m_long_click_state(nullptr) {
     }
+    // initializes the button
     bool initialize() {
         if (m_pressed == -1) {
             m_last_change_ms = 0;
@@ -157,14 +172,17 @@ struct button_ex final {
         }
         return m_pressed != -1;
     }
+    // indicates if the button is pressed (no debounce)
     inline bool raw_pressed() {
         initialize();
         return open_high ? !digitalRead(pin) : digitalRead(pin);
     }
+    // indicates if the button is pressed
     inline bool pressed() {
         initialize();
         return m_pressed > 0;
     }
+    // updates the button (should be called in loops)
     void update() {
         if (!initialize()) {
             return;
@@ -226,17 +244,19 @@ struct button_ex final {
                 m_last_release_ms = 0;
                 m_clicks = 0;
             }
-        }
-        
+        }   
     }
+    // sets the callback on click 
     void on_click(button_ex_callback cb, void* state = nullptr) {
         m_click_cb = cb;
         m_click_state = state;
     }
+    // sets the callback on double click
     void on_double_click(button_ex_callback cb, void* state = nullptr) {
         m_double_click_cb = cb;
         m_double_click_state = state;
     }
+    // sets the callback on long click
     void on_long_click(button_ex_callback cb, void* state = nullptr) {
         m_long_click_cb = cb;
         m_long_click_state = state;
