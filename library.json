@@ -1,6 +1,6 @@
 {
     "name": "htcw_button",
-    "version": "0.1.4",
+    "version": "0.1.5",
     "description": "Provides support for a simple pin based button",
     "keywords": ["button"],
     "authors": {
@@ -10,6 +10,9 @@
     "license": "MIT",
     "frameworks": ["arduino"],
     "platforms": "*",
+    "dependencies": {
+        "codewitch-honey-crisis/htcw_data": "^1.0.7"
+    },
     "repository":
     {
         "type": "git",

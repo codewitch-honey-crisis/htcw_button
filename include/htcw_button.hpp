@@ -1,5 +1,6 @@
 #pragma once
 #include <Arduino.h>
+#include <htcw_data.hpp>
 namespace arduino {
 typedef void (*button_callback)(bool pressed, void* state);
 template <uint8_t Pin, uint32_t DebounceMS = 10, bool OpenHigh = false>
@@ -75,187 +76,153 @@ class button {
         }
     }
 };
-typedef void (*button_ex_callback)(void* state);
 
-template <uint8_t Pin, uint32_t DebounceMS = 10, bool OpenHigh = false, uint32_t DoubleClickMS = 250, uint32_t LongClickMS = 500>
+typedef void (*button_ex_on_click_callback)(int clicks,void* state);
+typedef void (*button_ex_on_long_click_callback)(void* state);
+template <uint8_t Pin, uint32_t DebounceMS = 10, bool OpenHigh = false, bool UseInterrupt = false,uint32_t DoubleClickMS = 250, uint32_t LongClickMS = 500, size_t Events = 32>
 struct button_ex final {
     using type = button_ex;
     constexpr static const uint8_t pin = Pin;
     constexpr static const uint32_t debounce_ms = DebounceMS;
     constexpr static const bool open_high = OpenHigh;
+    constexpr static const bool use_interrupt = UseInterrupt;
     constexpr static const uint32_t double_click_ms = DoubleClickMS;
     constexpr static const uint32_t long_click_ms = LongClickMS;
-
-   private:
+    constexpr static const size_t events_size = Events;
+private:
+    typedef struct event_entry {
+        uint32_t ms;
+        int state;
+    } event_entry_t;
+    using event_buffer_t = data::circular_buffer<event_entry,events_size>;
     int m_pressed;
-    int m_clicks;
-    int m_long_clicks;
     uint32_t m_last_change_ms;
-    uint32_t m_last_release_ms;
-    uint32_t m_last_press_ms;
-    button_ex_callback m_click_cb;
-    void* m_click_state;
-    button_ex_callback m_double_click_cb;
-    void* m_double_click_state;
-    button_ex_callback m_long_click_cb;
-    void* m_long_click_state;
-    button_ex(const button_ex& rhs) = delete;
-    button_ex& operator=(const button_ex& rhs) = delete;
-
-   public:
-    button_ex(button_ex&& rhs) {
-        m_pressed = rhs.m_pressed;
-        m_clicks = rhs.m_clicks;
-        m_long_clicks = rhs.m_long_clicks;
-        m_last_change_ms = rhs.m_last_change_ms;
-        m_last_release_ms = rhs.m_last_release_ms;
-        m_last_press_ms = rhs.m_last_press_ms;
-        m_click_cb = rhs.m_click_cb;
-        rhs.m_click_cb = nullptr;
-        m_click_state = rhs.m_click_state;
-        m_double_click_cb = rhs.m_double_click_cb;
-        rhs.m_double_click_cb = nullptr;
-        m_double_click_state = rhs.m_double_click_state;
-        m_long_click_cb = rhs.m_long_click_cb;
-        rhs.m_long_click_cb = nullptr;
-        m_long_click_state = rhs.m_long_click_state;
+    event_buffer_t m_events;
+    button_ex_on_click_callback m_on_click;
+    void* m_on_click_state;
+    button_ex_on_long_click_callback m_on_long_click;
+    void* m_on_long_click_state;
+    #ifdef ESP32
+    IRAM_ATTR 
+    #endif
+    static void process_change(void* instance) {
+        type* this_ptr = (type*)instance;
+        uint32_t ms = millis();
+        bool pressed = this_ptr->raw_pressed();
+        if (pressed != this_ptr->m_pressed) {
+            if (ms - this_ptr->m_last_change_ms >= debounce_ms) {
+                if(!this_ptr->m_events.full()) {
+                    this_ptr->m_events.put({ms,pressed});
+                    this_ptr->m_pressed = pressed;
+                    this_ptr->m_last_change_ms = ms;
+                }
+            }
+        }
     }
-    button_ex& operator=(button_ex&& rhs) {
-        m_pressed = rhs.m_pressed;
-        m_clicks = rhs.m_clicks;
-        m_long_clicks = rhs.m_long_clicks;
-        m_last_change_ms = rhs.m_last_change_ms;
-        m_last_release_ms = rhs.m_last_release_ms;
-        m_last_press_ms = rhs.m_last_press_ms;
-        m_click_cb = rhs.m_click_cb;
-        rhs.m_click_cb = nullptr;
-        m_click_state = rhs.m_click_state;
-        m_double_click_cb = rhs.m_double_click_cb;
-        rhs.m_double_click_cb = nullptr;
-        m_double_click_state = rhs.m_double_click_state;
-        m_long_click_cb = rhs.m_long_click_cb;
-        rhs.m_long_click_cb = nullptr;
-        m_long_click_state = rhs.m_long_click_state;
-        return *this;
-    }
-    button_ex() : m_pressed(-1), m_clicks(0), m_long_clicks(0), m_last_change_ms(0), m_last_release_ms(0), m_last_press_ms(0), m_click_cb(nullptr), m_click_state(nullptr), m_double_click_cb(nullptr), m_double_click_state(nullptr), m_long_click_cb(nullptr), m_long_click_state(nullptr) {
+public:
+    button_ex() {
+        m_pressed = -1;
+        m_last_change_ms = 0;
+        m_on_click = nullptr;
+        m_on_click_state = nullptr;
+        m_on_long_click = nullptr;
+        m_on_long_click_state = nullptr;
     }
     bool initialize() {
-        if (m_pressed == -1) {
-            m_last_change_ms = 0;
+        if(m_pressed==-1) {
             if (open_high) {
                 pinMode(pin, INPUT_PULLUP);
             } else {
                 pinMode(pin, INPUT_PULLDOWN);
             }
-            m_pressed = 0;
-            m_clicks = 0;
-            m_long_clicks = 0;
-            m_pressed = raw_pressed();
-            m_last_press_ms = 0;
-            m_last_release_ms = 0;
+            if(use_interrupt) {
+                attachInterruptArg(digitalPinToInterrupt(pin),process_change,this,CHANGE);
+            }
+            m_pressed = open_high ? !digitalRead(pin) : digitalRead(pin);
+            m_last_change_ms = 0;
         }
-        return m_pressed != -1;
+        return m_pressed!=-1;
     }
-    inline bool raw_pressed() {
+    bool raw_pressed() {
         initialize();
         return open_high ? !digitalRead(pin) : digitalRead(pin);
     }
-    inline bool pressed() {
-        initialize();
-        return m_pressed > 0;
-    }
     void update() {
-        if (!initialize()) {
+        if(!initialize()) {
             return;
         }
-        bool pressed = raw_pressed();
-        uint32_t ms = millis();
-        if (pressed != m_pressed) {
-            if (ms - m_last_change_ms >= debounce_ms) {
-                uint32_t press_ms,release_ms;
-                if (!pressed) {
-                    press_ms = ms - m_last_press_ms;
-                    m_last_release_ms = ms;
-                    m_last_press_ms = 0;
-                    if(m_long_click_cb!=nullptr && press_ms>=long_click_ms) {
-                        ++m_long_clicks;
+        if(!use_interrupt) {
+            process_change(this);
+        }
+        if(m_pressed==1) {
+            return;
+        }
+        if(m_last_change_ms!=0 && !m_events.empty() && millis()-m_last_change_ms>= double_click_ms) {
+            event_entry_t ev;
+            event_entry_t ev_next;
+            uint32_t press_ms=0;
+            int state = 0;
+            int clicks = 0;
+            int longp = 0;
+            int done = 0;
+            while(!done) {
+                switch(state) {
+                case 0:
+                    if(!m_events.get(&ev)) {
+                        done = true;
+                        break;
+                    }
+                    if(ev.state==1) {
+                        // pressed
+                        state = 1;
+                        break;
                     } else {
-                        ++m_clicks;
+                        // released
+                        if(!m_events.get(&ev)) {
+                            done=true;
+                            break;
+                        }
+                        // pressed
+                        state = 1;
+                        break;
                     }
-                } else {
-                    release_ms = ms - m_last_release_ms;
-                    m_last_press_ms = ms;
-                    m_last_release_ms = 0;
+                case 1: // press state
+                    ++clicks;
+                    press_ms = ev.ms;
+                    if(!m_events.get(&ev)) {
+                        done = true;
+                        break;
+                    }
+                    state = 2;
+                    break;
+                case 2: // release state
+                    longp = !!(m_on_long_click && ev.ms-press_ms>=long_click_ms);
+                    if(!m_events.get(&ev)) {
+                        // flush the clicks
+                        if(m_on_click) {
+                            if(clicks>longp) {
+                                m_on_click(clicks-longp,m_on_click_state);
+                            }
+                        }
+                        if(longp) {
+                            m_on_long_click(m_on_long_click_state);
+                        }
+                        done = true;
+                        break;
+                    }
+                    state = 1;
+                    break;
                 }
-                m_pressed = pressed;
-                m_last_change_ms = ms;
-            }
-            if (!pressed) {
-                
-                m_last_release_ms = ms;
-                
-            } else  {
-                m_last_press_ms = ms;
             }
         }
-
-        if (m_last_release_ms != 0 && m_last_release_ms + double_click_ms < ms) {
-            if (!pressed) {
-                while(m_long_clicks!=0) {
-                    if (m_long_click_cb != nullptr) {
-                        m_long_click_cb(m_long_click_state);
-                    }
-                    --m_long_clicks;
-                }
-                switch (m_clicks) {
-                    case 0:
-                        break;
-                    case 1:
-                        if (m_click_cb != nullptr) {
-                            m_click_cb(m_click_state);
-                        }
-                        break;
-                    default:
-                        if (m_double_click_cb != nullptr) {
-                            while(m_clicks>1) {
-                                m_double_click_cb(m_double_click_state);
-                                m_clicks-=2;
-                            }
-                            while(m_clicks!=0) {
-                                if (m_click_cb != nullptr) {
-                                    m_click_cb(m_click_state);
-                                }
-                                --m_clicks;
-                            }
-                        } else {
-                            while(m_clicks!=0) {
-                                if (m_click_cb != nullptr) {
-                                    m_click_cb(m_click_state);
-                                }
-                                --m_clicks;
-                            }           
-                        }
-                        m_clicks = 0;
-                        break;
-                }
-                m_last_release_ms = 0;
-                m_clicks = 0;
-            }
-        }
-        
     }
-    void on_click(button_ex_callback cb, void* state = nullptr) {
-        m_click_cb = cb;
-        m_click_state = state;
+    void on_click(button_ex_on_click_callback callback, void* state = nullptr) {
+        m_on_click = callback;
+        m_on_click_state = state;
     }
-    void on_double_click(button_ex_callback cb, void* state = nullptr) {
-        m_double_click_cb = cb;
-        m_double_click_state = state;
-    }
-    void on_long_click(button_ex_callback cb, void* state = nullptr) {
-        m_long_click_cb = cb;
-        m_long_click_state = state;
+    void on_long_click(button_ex_on_long_click_callback callback, void* state = nullptr) {
+        m_on_long_click = callback;
+        m_on_long_click_state = state;
     }
 };
 }  // namespace arduino
