@@ -178,22 +178,26 @@ public:
                         break;
                     } else {
                         // released
-                        if(!m_events.get(&ev)) {
-                            done=true;
-                            break;
+                        while(ev.state!=1) {
+                            if(!m_events.get(&ev)) {
+                                done = true;
+                                break;
+                            }
+                            // pressed
+                            state = 1;
                         }
-                        // pressed
-                        state = 1;
                         break;
                     }
                 case 1: // press state
                     ++clicks;
                     press_ms = ev.ms;
-                    if(!m_events.get(&ev)) {
-                        done = true;
-                        break;
+                    while(ev.state!=0) {
+                        if(!m_events.get(&ev)) {
+                            done = true;
+                            break;
+                        }
+                        state = 2;
                     }
-                    state = 2;
                     break;
                 case 2: // release state
                     longp = !!(m_on_long_click && ev.ms-press_ms>=long_click_ms);
