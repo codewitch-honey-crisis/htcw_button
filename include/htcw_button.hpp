@@ -90,6 +90,7 @@ struct button_ex final {
     constexpr static const uint32_t long_click_ms = LongClickMS;
     constexpr static const size_t events_size = Events;
 private:
+    static type* m_this;
     typedef struct event_entry {
         uint32_t ms;
         int state;
@@ -105,16 +106,15 @@ private:
     #ifdef ESP32
     IRAM_ATTR 
     #endif
-    static void process_change(void* instance) {
-        type* this_ptr = (type*)instance;
+    static void process_change() {
         uint32_t ms = millis();
-        bool pressed = this_ptr->raw_pressed();
-        if (pressed != this_ptr->m_pressed) {
-            if (ms - this_ptr->m_last_change_ms >= debounce_ms) {
-                if(!this_ptr->m_events.full()) {
-                    this_ptr->m_events.put({ms,pressed});
-                    this_ptr->m_pressed = pressed;
-                    this_ptr->m_last_change_ms = ms;
+        bool pressed = m_this->raw_pressed();
+        if (pressed != m_this->m_pressed) {
+            if (ms - m_this->m_last_change_ms >= debounce_ms) {
+                if(!m_this->m_events.full()) {
+                    m_this->m_events.put({ms,pressed});
+                    m_this->m_pressed = pressed;
+                    m_this->m_last_change_ms = ms;
                 }
             }
         }
@@ -135,13 +135,22 @@ public:
             } else {
                 pinMode(pin, INPUT_PULLDOWN);
             }
+            m_this = this;
             if(use_interrupt) {
-                attachInterruptArg(digitalPinToInterrupt(pin),process_change,this,CHANGE);
+                attachInterrupt(digitalPinToInterrupt(pin),process_change,CHANGE);
             }
             m_pressed = open_high ? !digitalRead(pin) : digitalRead(pin);
             m_last_change_ms = 0;
         }
         return m_pressed!=-1;
+    }
+    void deinitialize() {
+        if(m_pressed!=-1) {
+            if(use_interrupt) {
+                detachInterrupt(digitalPinToInterrupt(pin));
+            }
+            m_pressed=-1;
+        }
     }
     bool raw_pressed() {
         initialize();
@@ -152,7 +161,7 @@ public:
             return;
         }
         if(!use_interrupt) {
-            process_change(this);
+            process_change();
         }
         if(m_pressed==1) {
             return;
@@ -229,4 +238,8 @@ public:
         m_on_long_click_state = state;
     }
 };
+template <uint8_t Pin, uint32_t DebounceMS , bool OpenHigh , bool UseInterrupt ,uint32_t DoubleClickMS , uint32_t LongClickMS , size_t Events>
+button_ex<Pin, DebounceMS, OpenHigh, UseInterrupt, DoubleClickMS, LongClickMS, Events>*
+button_ex<Pin, DebounceMS, OpenHigh, UseInterrupt, DoubleClickMS, LongClickMS, Events>::m_this = nullptr;
+
 }  // namespace arduino
