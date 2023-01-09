@@ -1,6 +1,6 @@
 {
     "name": "htcw_button",
-    "version": "0.1.7",
+    "version": "0.2.0",
     "description": "Provides support for a simple pin based button",
     "keywords": ["button"],
     "authors": {
@@ -13,6 +13,16 @@
     "dependencies": {
         "codewitch-honey-crisis/htcw_data": "^1.0.7"
     },
+    "examples": [
+        {
+            "name": "Demo",
+            "base": "examples/demo",
+            "files": [
+                "platformio.ini",
+                "src/main.cpp"
+            ]
+        }
+    ],
     "repository":
     {
         "type": "git",

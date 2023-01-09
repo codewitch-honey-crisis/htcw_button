@@ -1,3 +1,4 @@
+// DEPRECATED - use button.hpp for new projects
 #pragma once
 #include <Arduino.h>
 #include <htcw_data.hpp>
