@@ -1,6 +1,6 @@
 {
     "name": "htcw_button",
-    "version": "0.2.0",
+    "version": "0.2.1",
     "description": "Provides support for a simple pin based button",
     "keywords": ["button"],
     "authors": {
@@ -8,7 +8,7 @@
         "homepage": "https://www.codeproject.com/Members/code-witch"
     },
     "license": "MIT",
-    "frameworks": ["arduino"],
+    "frameworks": ["*"],
     "platforms": "*",
     "dependencies": {
         "codewitch-honey-crisis/htcw_data": "^1.0.7"
