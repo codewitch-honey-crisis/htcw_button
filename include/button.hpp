@@ -346,7 +346,6 @@ class multi_button_ex final : public button {
         }
         if (m_last_change_ms != 0 && !m_events.empty() && millis() - m_last_change_ms >= double_click_ms) {
             event_entry_t ev;
-            event_entry_t ev_next;
             uint32_t press_ms = 0;
             int state = 0;
             int clicks = 0;
