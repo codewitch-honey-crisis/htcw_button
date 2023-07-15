@@ -309,7 +309,7 @@ class multi_button_ex final : public button {
     multi_button_ex(button& inner_button) : m_button(inner_button){
 
                                             };
-    multi_button_ex(multi_button_ex&& rhs) {
+    multi_button_ex(multi_button_ex&& rhs) : m_button(rhs.m_button) {
         do_move(rhs);
     }
     multi_button_ex& operator=(multi_button_ex&& rhs) {
