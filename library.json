@@ -1,6 +1,6 @@
 {
     "name": "htcw_button",
-    "version": "0.2.21",
+    "version": "0.2.22",
     "description": "Provides support for a simple pin based button",
     "keywords": ["button"],
     "authors": {

@@ -59,10 +59,10 @@ void basic_button::update() {
     if (pressed != m_pressed) {
         uint32_t ms = millis();
         if (ms - m_last_change_ms >= m_debounce_ms) {
+            m_pressed = pressed;
             if (m_on_pressed_changed != nullptr) {
                 m_on_pressed_changed(pressed, m_on_pressed_changed_state);
             }
-            m_pressed = pressed;
             m_last_change_ms = ms;
         }
     }
