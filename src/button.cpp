@@ -95,7 +95,7 @@ void basic_button::initialize() {
         // set as output mode
         io_conf.mode = GPIO_MODE_INPUT;
         // bit mask of the pins that you want to set,e.g.GPIO18/19
-        io_conf.pin_bit_mask = 1 << m_pin;
+        io_conf.pin_bit_mask = uint64_t(1) << m_pin;
         if (m_open_high) {
             // disable pull-down mode
             io_conf.pull_down_en = GPIO_PULLDOWN_DISABLE;
