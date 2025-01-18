@@ -1,6 +1,6 @@
 {
     "name": "htcw_button",
-    "version": "0.2.23",
+    "version": "0.2.24",
     "description": "Provides support for a simple pin based button",
     "keywords": ["button"],
     "authors": {
@@ -11,7 +11,7 @@
     "frameworks": ["*"],
     "platforms": "*",
     "dependencies": {
-        "codewitch-honey-crisis/htcw_data": "^1.0.7"
+        "codewitch-honey-crisis/htcw_data": "^1.4.3"
     },
     "examples": [
         {
