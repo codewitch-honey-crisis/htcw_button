@@ -2,11 +2,8 @@
 #ifndef ARDUINO
 #include <driver/gpio.h>
 #include <string.h>
-using namespace esp_idf;
-#else
-using namespace arduino;
 #endif
-
+using namespace htcw;
 #ifndef ARDUINO
 static uint32_t millis() {
     struct timeval tv;

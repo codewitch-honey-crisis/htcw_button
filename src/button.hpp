@@ -9,11 +9,7 @@
 #error "This library requires Arduino or the ESP-IDF"
 #endif
 #include <htcw_data.hpp>
-#ifdef ARDUINO
-namespace arduino {
-#else
-namespace esp_idf {
-#endif
+namespace htcw {
 typedef void (*button_on_pressed_changed)(bool pressed, void* state);
 class button {
    public:
